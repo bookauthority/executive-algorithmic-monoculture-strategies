@@ -1,0 +1,2 @@
+# No external runtime dependencies are required.
+# The experiment uses only the Python standard library.

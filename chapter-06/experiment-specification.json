@@ -1,0 +1,651 @@
+{
+  "experiment_id": "exp-06-model-diversity-corr-errors-v1",
+  "hypothesis": "Within an enterprise AI stack, models that share vendors, architectures, or training data sources will exhibit significantly higher error correlation and output agreement on shared tasks than models that are intentionally diversified along these dimensions. Quantifying these correlations will reveal clusters of effectively redundant models and decision paths, enabling executives to see where algorithmic monoculture risk is concentrated.",
+  "baseline": {
+    "description": "Current-state model portfolio performance and behavior when evaluated individually on their own production-style tasks, without any explicit measurement of cross-model agreement or error correlation.",
+    "configuration": {
+      "model_selection": "Use the organization\u2019s existing models serving a single critical decision domain (e.g., credit risk scoring, fraud detection, medical triage, or customer recommendation). Include all models that are currently in production or considered for production for this domain.",
+      "models": [
+        {
+          "id": "M1",
+          "label": "Primary production model",
+          "type": "e.g., gradient-boosted decision tree, transformer classifier, recommender",
+          "vendor": "Internal or specific external vendor",
+          "role": "Gold-standard or officially endorsed model for the decision domain"
+        },
+        {
+          "id": "M2",
+          "label": "Secondary or legacy model",
+          "type": "Any model making the same or closely related decisions",
+          "vendor": "May share or differ from M1"
+        },
+        {
+          "id": "M3_plus",
+          "label": "Additional models in the same decision flow",
+          "type": "Shadow, challenger, vendor-comparison, or segment-specific models"
+        }
+      ],
+      "data": {
+        "dataset_name": "DOMAIN_EVAL_SET_BASELINE",
+        "description": "A held-out evaluation dataset representative of real production inputs for the selected decision domain. Should not include the exact records used for initial training.",
+        "size_guideline": "Minimum 5,000\u201310,000 examples for tabular/text tasks; more if available. For high-variance or long-tail tasks, prefer 50,000+ examples if feasible.",
+        "label_availability": "Include ground-truth outcomes where possible (e.g., default/no default, fraud/no fraud). If labels are unavailable, note that only agreement/variance metrics (not error rates) will be calculable."
+      },
+      "evaluation": {
+        "metrics": [
+          "Standard performance metrics per model (e.g., accuracy, AUC, F1, calibration metrics for classification; RMSE, MAE, R^2 for regression). These are logged but not yet compared across models.",
+          "No cross-model comparison, correlation, or clustering is performed in the baseline."
+        ]
+      }
+    }
+  },
+  "treatment": {
+    "description": "Systematic, cross-model evaluation on shared datasets with standardized outputs, enabling quantification of model diversity, pairwise and groupwise error correlations, and agreement rates. This turns a set of individual models into a measured portfolio.",
+    "configuration": {
+      "model_selection": "Use the same set of models as in the baseline (M1, M2, M3+), plus any additional candidate or vendor models that could feasibly be substituted into the same decision pipeline. All models must be able to accept a common input schema or be wrapped to do so.",
+      "shared_datasets": [
+        {
+          "id": "DOMAIN_EVAL_SET_CORE",
+          "description": "Core evaluation dataset identical or nearly identical to DOMAIN_EVAL_SET_BASELINE to allow comparability with baseline metrics.",
+          "purpose": "Primary dataset for computing cross-model agreement and error correlation in current business conditions."
+        },
+        {
+          "id": "DOMAIN_EVAL_SET_SHIFTED",
+          "description": "Optional dataset representing a different time period, region, segment, or stress condition (e.g., data from a volatility spike, regulatory change, or promotional campaign).",
+          "purpose": "Assess stability of agreement and correlation patterns under plausible distribution shift.",
+          "optional": true
+        }
+      ],
+      "model_interfaces": {
+        "standard_input_schema": "A unified feature schema and data format (e.g., a standardized tabular feature matrix, tokenized text, or image tensor format) implemented via adapter/wrapper code for each model.",
+        "standard_output_schema": "A unified output format for all models, e.g.:\n- Classification: probability scores per class and final predicted class label.\n- Regression: numeric prediction.\n- Ranking/recommendation: ordered list of recommended items with scores.",
+        "wrappers": "Thin adapter functions or services that translate from the standard schema to each model\u2019s native interface and back, logged in configuration files in the repository."
+      },
+      "additional_evaluations": {
+        "cross_model_metrics": [
+          "Pairwise prediction agreement and disagreement.",
+          "Pairwise error correlation conditional on ground truth.",
+          "Diversity indices across the model portfolio (e.g., ensemble diversity measures).",
+          "Cluster analysis to identify groups of models that behave similarly."
+        ],
+        "scenario_subsets": "Optional slicing of the datasets into meaningful business segments (e.g., geography, customer type, transaction size, risk band) to measure where monoculture risk is highest."
+      }
+    }
+  },
+  "workloads": [
+    {
+      "id": "WL1-core-decision-domain",
+      "description": "Primary workload: concurrent evaluation of multiple models on a shared dataset for a single critical decision domain (e.g., credit approval, fraud detection, medical triage, pricing, or high-impact recommendations). This is the core mandatory workload for the experiment.",
+      "inputs": {
+        "models": [
+          "At least 2, preferably 3\u20136 distinct models currently used or under consideration for the same decision task.",
+          "Models may differ in vendor, architecture, training period, or segment focus but must accept or be adapted to the standardized input schema."
+        ],
+        "dataset": "DOMAIN_EVAL_SET_CORE, as defined in the treatment configuration.",
+        "ground_truth_labels": "Required for full error correlation analysis. For decisions without clear binary labels, define a proxy or delayed outcome where possible (e.g., subsequent default, complaint, churn). If impossible, restrict to agreement-only metrics."
+      },
+      "procedure": [
+        "Step 1: For each sample in DOMAIN_EVAL_SET_CORE, pass the same standardized input to each model wrapper (M1 ... Mk).",
+        "Step 2: Collect standardized outputs for all models (probabilities, predicted labels, or numeric predictions).",
+        "Step 3: Store outputs in a unified results table with schema: {sample_id, ground_truth (if any), model_id, prediction, auxiliary_outputs (e.g., probability scores, rankings)}.",
+        "Step 4: Compute per-model performance metrics (as in baseline) for all models on the shared dataset.",
+        "Step 5: Compute cross-model agreement and correlation metrics (see metrics section).",
+        "Step 6: Create visualizations (heatmaps, scatterplots, clusters) to show agreement, error correlation, and diversity across models."
+      ],
+      "expected_runtime": "Dependent on dataset size and model latency. For 10,000\u201350,000 samples and 3\u20136 models, expect 30\u2013180 minutes on a modern GPU/CPU environment, assuming API or local inference is available.",
+      "notes": "This workload is required to produce the primary diversity and correlation measures used to brief executives and boards."
+    },
+    {
+      "id": "WL2-segmented-analysis",
+      "description": "Secondary workload: segment-level analysis to identify where model agreement and error correlation are highest or lowest across key business segments.",
+      "inputs": {
+        "models": "Same models as WL1.",
+        "dataset": "DOMAIN_EVAL_SET_CORE, annotated with meaningful segment labels (e.g., region, product line, risk band, demographic group, channel).",
+        "segments": "A predefined set of 3\u201310 segments relevant to the business and the decision domain."
+      },
+      "procedure": [
+        "Step 1: Using the unified results table from WL1, attach segment labels to each sample.",
+        "Step 2: For each segment, recompute agreement and error correlation metrics for model pairs and groups.",
+        "Step 3: For each segment, compute segment-level performance metrics per model (e.g., per-segment AUC, accuracy, fairness-relevant gaps if appropriate).",
+        "Step 4: Visualize segments as rows and model pairs as columns in a heatmap showing error correlation and agreement rates, highlighting hotspots of high correlation in critical segments.",
+        "Step 5: Summarize key findings in a segment-level risk profile (e.g., which segments are most exposed to monoculture risk)."
+      ],
+      "expected_runtime": "Low incremental cost compared with WL1, typically 10\u201330 minutes for recomputations and visualization.",
+      "notes": "This workload deepens understanding of where monoculture risk is operationally most dangerous (e.g., high error correlation in high-risk customer segments)."
+    },
+    {
+      "id": "WL3-shifted-or-stress-eval",
+      "description": "Optional workload: evaluate how model diversity and error correlation behave under distribution shift or stress conditions (e.g., a new regulatory regime, economic shock, or different customer base).",
+      "inputs": {
+        "models": "Same models as WL1, or a strategic subset if evaluation cost is high.",
+        "dataset": "DOMAIN_EVAL_SET_SHIFTED, representing a different time period, region, or scenario.",
+        "ground_truth_labels": "Preferred but not strictly required. If absent, restrict analysis to agreement and divergence metrics."
+      },
+      "procedure": [
+        "Step 1: Repeat WL1 steps 1\u20134 using DOMAIN_EVAL_SET_SHIFTED instead of DOMAIN_EVAL_SET_CORE.",
+        "Step 2: Compute and compare cross-model agreement and error correlation metrics under shifted conditions.",
+        "Step 3: Quantify changes in correlation and agreement compared to the core dataset (e.g., delta in pairwise correlation coefficients).",
+        "Step 4: Visualize before/after heatmaps of error correlation and agreement, highlighting where models converge or diverge under stress.",
+        "Step 5: Document whether the portfolio becomes more or less diverse under shift, and whether any model acts as a useful dissenting signal during stress."
+      ],
+      "expected_runtime": "Similar to WL1; 30\u2013180 minutes depending on dataset size and model/runtime characteristics.",
+      "notes": "This workload is especially relevant for domains with known cyclical or shock-driven behavior (e.g., credit, supply chain, demand forecasting)."
+    }
+  ],
+  "controls": {
+    "data_controls": [
+      "Use identical input datasets and splits for all models in WL1 and WL3 to ensure comparability.",
+      "Freeze datasets for the duration of the experiment; log dataset version hashes or timestamps.",
+      "If data is sampled from production logs, define reproducible sampling rules and random seeds."
+    ],
+    "model_controls": [
+      "Do not change model configurations (hyperparameters or training) during the experiment; use the production or near-production versions as-is.",
+      "Document model versions and any relevant deployment metadata (e.g., model hash, training data range, vendor version).",
+      "Ensure that external API-based models are called with fixed parameters (e.g., temperature, top_p) and pinned model versions if supported."
+    ],
+    "execution_controls": [
+      "Run all models for a given workload in as tight a time window as practicable to minimize temporal drift in external models.",
+      "Log all random seeds used for stochastic models or ensemble components.",
+      "Use consistent preprocessing and feature engineering for all models via shared pipelines or well-documented adapter functions."
+    ],
+    "governance_controls": [
+      "Obtain necessary approvals for using production or sensitive data in evaluation (e.g., privacy, compliance, ethics review).",
+      "If personally identifiable information is involved, ensure anonymization or pseudonymization where required and approved.",
+      "Clarify that this is an evaluation-only exercise; no experimental outputs should be fed back into live decision systems without separate validation."
+    ]
+  },
+  "metrics": [
+    {
+      "name": "per_model_primary_performance",
+      "description": "Standard per-model task performance on the shared evaluation dataset (e.g., accuracy, AUC, F1 for classification; RMSE/MAE for regression). Used as a baseline to ensure models are reasonably competent before interpreting diversity metrics.",
+      "unit": "Task-dependent (e.g., proportion, score between 0 and 1, error units)",
+      "aggregation": "Per model, over all samples and optionally by segment."
+    },
+    {
+      "name": "pairwise_prediction_agreement_rate",
+      "description": "For each pair of models, the proportion of samples for which both models produce the same final decision (e.g., same class label, same top-ranked recommendation, or predictions within a small numerical tolerance). High agreement suggests potential redundancy.",
+      "unit": "Proportion between 0 and 1",
+      "aggregation": "Computed for each model pair over the full dataset and optionally by segment."
+    },
+    {
+      "name": "pairwise_error_correlation",
+      "description": "For each pair of models, the correlation of their error indicators across samples (e.g., both correct, both incorrect, or one correct/one incorrect). When ground truth is available, errors are encoded as binary variables per model; correlation (e.g., Pearson or phi coefficient) is computed between error vectors.",
+      "unit": "Correlation coefficient between -1 and 1",
+      "aggregation": "Per model pair over the full dataset and optionally by segment. High positive values indicate that models tend to fail on the same cases."
+    },
+    {
+      "name": "disagreement_rate_on_errors",
+      "description": "For each pair of models, the proportion of samples where at least one model is wrong and the models disagree with each other. Higher values can indicate useful diversity among imperfect models.",
+      "unit": "Proportion between 0 and 1",
+      "aggregation": "Per model pair; can be reported overall and in critical segments."
+    },
+    {
+      "name": "portfolio_diversity_index",
+      "description": "An aggregate metric summarizing diversity across the model portfolio, computed from pairwise agreement and/or correlation statistics. Specific implementations may include average pairwise disagreement or established ensemble diversity measures (e.g., Q-statistic, Kohavi-Wolpert variance).",
+      "unit": "Unitless diversity score (normalized, e.g., between 0 and 1, where higher indicates greater diversity)",
+      "aggregation": "Single score per portfolio and optionally per segment."
+    },
+    {
+      "name": "model_cluster_separation_score",
+      "description": "A measure of how distinct model behavior clusters are when models are grouped based on their prediction patterns (e.g., based on dimensionality reduction and clustering of prediction vectors).",
+      "unit": "Cluster separation index (e.g., silhouette score, between -1 and 1)",
+      "aggregation": "Single score per clustering run; can be repeated for different numbers of clusters."
+    },
+    {
+      "name": "critical_segment_correlation_index",
+      "description": "Average pairwise error correlation for models in pre-defined high-criticality segments (e.g., high-risk customers, high-value transactions, sensitive demographic groups).",
+      "unit": "Correlation coefficient (averaged, -1 to 1)",
+      "aggregation": "Per segment and optionally aggregated across defined 'critical' segments."
+    },
+    {
+      "name": "agreement_under_shift_delta",
+      "description": "Change in pairwise agreement rates when moving from the core dataset to the shifted/stress dataset.",
+      "unit": "Absolute or relative change in proportion",
+      "aggregation": "Per model pair; summarized with portfolio-level statistics (e.g., mean, median change)."
+    },
+    {
+      "name": "error_correlation_under_shift_delta",
+      "description": "Change in pairwise error correlation when moving from the core dataset to the shifted/stress dataset.",
+      "unit": "Absolute change in correlation coefficient",
+      "aggregation": "Per model pair; summarized at portfolio level."
+    }
+  ],
+  "success_criteria": {
+    "technical_success": [
+      "All selected models can be invoked via a unified interface, and their predictions are successfully logged for at least one substantial evaluation dataset (>= 5,000 examples, or a lower bound appropriate to the domain\u2019s data scarcity).",
+      "Per-model performance metrics are computed and validated as consistent with known production behavior (no major unexplained deviations).",
+      "Pairwise prediction agreement rates and error correlations are successfully computed for all model pairs, with appropriate handling of missing labels where necessary.",
+      "At least one portfolio-level diversity index and one clustering analysis of model behavior are produced and visualized (e.g., heatmaps, cluster diagrams)."
+    ],
+    "executive_insight_success": [
+      "The organization can clearly identify at least one of the following from the analysis:\n  - A cluster of models that are effectively redundant (high error correlation and agreement) and therefore contribute little to resilience.\n  - At least one model that behaves differently in a way that could add resilience or challenge the majority decision.\n  - Specific segments or decision contexts where monoculture risk (high shared error rates) is greatest.",
+      "A concise 1\u20132 page executive summary is produced, translating technical metrics into clear statements about concentration of risk, redundancy, and opportunities to add or remove diversity.",
+      "At least 3\u20135 concrete follow-up actions or questions are identified for leadership (e.g., where to maintain multiple models, where to rationalize, where to introduce a different architecture or vendor)."
+    ],
+    "reproducibility_success": [
+      "Experiment configurations (model versions, dataset versions, preprocessing, random seeds) are fully specified in configuration files or notebooks, allowing another technical team to rerun the analysis and obtain comparable results.",
+      "All plots and tables used in executive presentations can be regenerated from version-controlled code and data references in the companion repository.",
+      "A short internal README or runbook is created describing how to re-run the experiment when models or datasets are updated."
+    ]
+  },
+  "failure_modes": [
+    {
+      "name": "incompatible_model_interfaces",
+      "description": "Some models cannot be adapted to the standardized input/output schema within the time or resource constraints.",
+      "impact": "Incomplete or biased view of the portfolio; missing key models may understate or misrepresent monoculture risk.",
+      "mitigation": [
+        "Prioritize inclusion of models that handle the highest decision volume or most critical decisions.",
+        "Create minimal viable adapters that support inference only (no training), deferring full integration work.",
+        "Document excluded models explicitly in the executive summary, with rationale."
+      ]
+    },
+    {
+      "name": "insufficient_or_biased_evaluation_data",
+      "description": "Evaluation datasets are too small or not representative of real production conditions, or lack critical segments.",
+      "impact": "Metrics may suggest misleadingly low or high error correlation; executives may draw incorrect conclusions about risk.",
+      "mitigation": [
+        "Work with domain experts to validate dataset representativeness and segment coverage before running the experiment.",
+        "If sample size is small, explicitly flag results as exploratory and avoid overconfident decisions.",
+        "Plan a follow-up iteration with more robust or longer-term data where necessary."
+      ]
+    },
+    {
+      "name": "lack_of_ground_truth_labels",
+      "description": "For some or all datasets, reliable ground-truth outcomes are missing or delayed.",
+      "impact": "True error correlation cannot be computed; analysis is limited to agreement and divergence of predictions.",
+      "mitigation": [
+        "Focus on agreement-only metrics while clearly flagging the limitation to executives.",
+        "Identify proxy labels or later-outcome labels where feasible (e.g., realized default, returns, complaints).",
+        "Plan a subsequent analysis when additional labels become available."
+      ]
+    },
+    {
+      "name": "unstable_external_models_or_apis",
+      "description": "Cloud or vendor models change behavior between runs (e.g., version updates, drift, or non-deterministic outputs).",
+      "impact": "Results are harder to reproduce; measured diversity or correlation may mix true model behavior with temporal drift.",
+      "mitigation": [
+        "Pin model versions and parameters where the vendor allows; log model version identifiers and timestamps.",
+        "Run all calls to unstable external models in a narrow time window and record seeds or sampling parameters.",
+        "Repeat a small subset of evaluations to quantify non-determinism and, if high, interpret results cautiously."
+      ]
+    },
+    {
+      "name": "misinterpretation_by_non_technical_stakeholders",
+      "description": "Executives misinterpret high agreement as purely positive (\"consistency\") or high diversity as purely negative (\"noise\"), missing the risk/resilience trade-offs.",
+      "impact": "Incorrect strategic decisions about consolidation or diversification of models.",
+      "mitigation": [
+        "Provide a clear narrative in the executive summary and slide materials explaining the trade-offs (e.g., consistency vs. shared failure).",
+        "Use simple analogies (e.g., financial diversification, supply chain single-sourcing) to contextualize metrics.",
+        "Highlight both risks and benefits of current diversity levels, not just numeric scores."
+      ]
+    },
+    {
+      "name": "governance_and_compliance_obstacles",
+      "description": "Data access, privacy, or compliance concerns delay or constrain the experiment.",
+      "impact": "Partial or postponed results; inability to run the experiment across the most critical datasets.",
+      "mitigation": [
+        "Engage risk, legal, and compliance stakeholders early with a concise briefing that explains purpose, benefits, and data handling controls.",
+        "Where possible, anonymize or pseudonymize sensitive fields and use secure evaluation environments.",
+        "If necessary, run the experiment on synthetic or de-identified datasets to demonstrate approach, then extend to real data under tighter controls."
+      ]
+    }
+  ],
+  "required_environment": {
+    "infrastructure": [
+      "Secure compute environment aligned with organizational policies (e.g., on-prem cluster, secure cloud VPC) capable of running the selected models and accessing evaluation datasets.",
+      "Sufficient CPU/GPU resources for batch inference across all selected models (exact requirements depend on model complexity and dataset sizes).",
+      "Network connectivity and credentials for accessing any external model APIs, with appropriate rate limits and logging."
+    ],
+    "software_stack": [
+      "Python 3.9+ (or organization standard) with common data science libraries (e.g., pandas, numpy, scipy, scikit-learn, matplotlib, seaborn or equivalent visualization stack).",
+      "JupyterLab or Jupyter Notebook environment (or equivalent, e.g., VS Code notebooks) for running provided notebooks from the companion repository.",
+      "Any proprietary or internal SDKs needed to invoke in-house models or vendor APIs (documented in local configuration files)."
+    ],
+    "repository_layout": {
+      "root_url": "https://github.com/bookauthority/executive-algorithmic-monoculture-strategies",
+      "experiment_directory": "experiments/exp01_model_diversity_error_correlation",
+      "key_artifacts": [
+        "01_setup_environment.ipynb (or .py): Environment checks, library installation, and configuration template generation.",
+        "02_run_inference_collect_predictions.ipynb: Scripts/notebooks to call all models on shared datasets and store predictions.",
+        "03_compute_diversity_and_correlation_metrics.ipynb: Metric computation and basic statistical analysis.",
+        "04_visualize_and_export_results.ipynb: Generation of heatmaps, cluster diagrams, and executive-ready summary tables.",
+        "config/models.yaml: Model registry and adapter configuration (IDs, endpoints, paths, types, vendor, version).",
+        "config/datasets.yaml: Dataset locations, schema definitions, and segment labels.",
+        "README.md: Detailed instructions specific to this experiment, including environment setup, data wiring, and troubleshooting."
+      ]
+    },
+    "data_requirements": [
+      "Access to at least one evaluation dataset for a high-priority decision domain, with appropriate documentation of schema, sampling, and labeling.",
+      "Storage for intermediate prediction logs and derived metrics (ideally in a secure, version-controlled data store or object storage bucket)."
+    ],
+    "access_and_security": [
+      "Appropriate IAM roles/permissions for data scientists or research engineers running the experiment.",
+      "Compliance with organizational data governance, including logging of data access and model invocation where required."
+    ]
+  },
+  "run_instructions": {
+    "for_executive_sponsors": [
+      "1. Select a single high-impact decision domain for the first run (e.g., credit underwriting, fraud detection, medical triage, safety-critical anomaly detection, or high-value recommendation).",
+      "2. Identify the technical owner(s) responsible for models in this domain (e.g., Head of Data Science, domain model lead) and formally commission them to run Experiment 1 using the companion repository.",
+      "3. Provide a clear mandate and timeline (e.g., 4\u20136 weeks) along with any necessary support for data access and cross-team coordination.",
+      "4. Request three deliverables: (a) a technical report summarizing metrics and methods, (b) an executive summary with visuals and key messages, and (c) a short plan outlining actions to address identified monoculture risks or redundancy.",
+      "5. Ensure risk, compliance, and IT security stakeholders are informed and, where needed, involved to prevent later objections on data use or methodology."
+    ],
+    "for_technical_teams": [
+      "1. Repository setup:\n   - Clone the repository from the root_url and navigate to the experiment_directory for Experiment 1.\n   - Review the local README.md for any organization-specific overrides or examples.\n   - Set up the Python environment using the provided environment.yml or requirements.txt.",
+      "2. Configure models and datasets:\n   - Populate config/models.yaml with entries for each model to be evaluated, including: unique ID, description, vendor/internal flag, endpoint or path, wrapper module or function name, version, and any required authentication or parameters.\n   - Populate config/datasets.yaml with entries for DOMAIN_EVAL_SET_CORE (and DOMAIN_EVAL_SET_SHIFTED if applicable), including: data source location, schema mapping to the standardized input format, label columns, and segment labels (if available).",
+      "3. Validate environment and adapters:\n   - Run 01_setup_environment.ipynb to verify all dependencies and configurations.\n   - Implement or update model adapter functions in the designated module (e.g., models/adapters.py) so that each model can be called via a common interface.\n   - Test each adapter on a small sample of data to ensure outputs are correctly formatted and logged.",
+      "4. Run inference and collect predictions:\n   - Execute 02_run_inference_collect_predictions.ipynb for DOMAIN_EVAL_SET_CORE (and DOMAIN_EVAL_SET_SHIFTED if applicable).\n   - Confirm that a unified predictions file/table is generated (e.g., data/predictions_core.parquet) with fields: sample_id, dataset_id, segment labels, ground_truth (if any), model_id, prediction values, and any auxiliary outputs.\n   - Perform basic sanity checks on predictions (e.g., class distributions, probability ranges, missing values).",
+      "5. Compute metrics and analyze diversity:\n   - Execute 03_compute_diversity_and_correlation_metrics.ipynb.\n   - Inspect per-model performance metrics to ensure they are broadly consistent with expectations.\n   - Generate pairwise prediction agreement and error correlation matrices; compute portfolio_diversity_index and related metrics.\n   - If segments are defined, rerun metrics by segment to identify hotspots of high agreement and shared error.",
+      "6. Visualize results and prepare exports:\n   - Execute 04_visualize_and_export_results.ipynb to create heatmaps of agreement and error correlation, cluster diagrams of models by behavior, and summary tables.\n   - Export selected plots and tables in formats suitable for executive presentations (e.g., PNG/SVG images, CSV/Excel tables).",
+      "7. Document findings and recommendations:\n   - Draft a short technical report detailing methodology, configuration (model and dataset versions), and key observations.\n   - Collaborate with product and risk stakeholders to interpret findings in business terms (e.g., which models are redundant, where disagreements might be useful, where shared errors could lead to systemic failures).\n   - Provide concrete recommendations on where to retain diversity, where to consolidate models, and where to introduce new types of models or vendors.",
+      "8. Version control and reproducibility:\n   - Commit relevant configuration files and non-sensitive code changes to the organization\u2019s internal Git repository.\n   - Tag a release or branch corresponding to the experiment run, including references to dataset snapshots or hashes.\n   - Store generated metrics and visualizations in a location accessible for future comparison as models are updated."
+    ]
+  },
+  "evidence_schema": {
+    "description": "Structured format for recording experimental evidence, enabling consistent interpretation, governance review, and comparison across runs and domains.",
+    "schema_version": "1.0",
+    "fields": [
+      {
+        "name": "experiment_metadata",
+        "type": "object",
+        "required": true,
+        "properties": [
+          {
+            "name": "experiment_id",
+            "type": "string",
+            "description": "Identifier for this experiment configuration (e.g., exp-06-model-diversity-corr-errors-v1)."
+          },
+          {
+            "name": "run_id",
+            "type": "string",
+            "description": "Unique identifier for this specific execution (e.g., timestamped UUID)."
+          },
+          {
+            "name": "domain",
+            "type": "string",
+            "description": "Business decision domain evaluated (e.g., credit_underwriting, fraud_detection)."
+          },
+          {
+            "name": "run_date",
+            "type": "string",
+            "format": "date-time",
+            "description": "Start time of the main evaluation run."
+          },
+          {
+            "name": "owner",
+            "type": "string",
+            "description": "Name or role of the technical lead responsible for the run."
+          },
+          {
+            "name": "executive_sponsor",
+            "type": "string",
+            "description": "Name or role of the executive sponsor for this experiment."
+          }
+        ]
+      },
+      {
+        "name": "model_registry_snapshot",
+        "type": "array",
+        "required": true,
+        "description": "List of models included in the experiment with key metadata.",
+        "items": {
+          "type": "object",
+          "properties": [
+            {
+              "name": "model_id",
+              "type": "string",
+              "description": "Internal identifier (e.g., M1, M2)."
+            },
+            {
+              "name": "name",
+              "type": "string",
+              "description": "Human-readable model name."
+            },
+            {
+              "name": "vendor_type",
+              "type": "string",
+              "enum": [
+                "internal",
+                "external"
+              ],
+              "description": "Whether the model is built in-house or provided by a vendor."
+            },
+            {
+              "name": "vendor_name",
+              "type": "string",
+              "description": "Vendor or platform name, if external."
+            },
+            {
+              "name": "architecture",
+              "type": "string",
+              "description": "High-level model type (e.g., GBDT, logistic_regression, transformer, random_forest)."
+            },
+            {
+              "name": "version",
+              "type": "string",
+              "description": "Model version identifier or hash."
+            },
+            {
+              "name": "role",
+              "type": "string",
+              "description": "Production role (e.g., primary, challenger, legacy, experimental)."
+            }
+          ]
+        }
+      },
+      {
+        "name": "dataset_snapshot",
+        "type": "array",
+        "required": true,
+        "description": "Information about each dataset used in the experiment.",
+        "items": {
+          "type": "object",
+          "properties": [
+            {
+              "name": "dataset_id",
+              "type": "string",
+              "description": "Identifier (e.g., DOMAIN_EVAL_SET_CORE, DOMAIN_EVAL_SET_SHIFTED)."
+            },
+            {
+              "name": "source",
+              "type": "string",
+              "description": "Data source description or location reference."
+            },
+            {
+              "name": "time_window",
+              "type": "string",
+              "description": "Time period covered, if applicable."
+            },
+            {
+              "name": "size",
+              "type": "integer",
+              "description": "Number of samples used."
+            },
+            {
+              "name": "label_coverage",
+              "type": "string",
+              "description": "Description of label availability (e.g., 100% labeled, 60% labeled, proxy labels)."
+            },
+            {
+              "name": "segment_definitions",
+              "type": "string",
+              "description": "Brief description or reference to where segment definitions are stored."
+            }
+          ]
+        }
+      },
+      {
+        "name": "per_model_metrics",
+        "type": "array",
+        "required": true,
+        "description": "Per-model performance metrics on each dataset.",
+        "items": {
+          "type": "object",
+          "properties": [
+            {
+              "name": "model_id",
+              "type": "string"
+            },
+            {
+              "name": "dataset_id",
+              "type": "string"
+            },
+            {
+              "name": "metric_name",
+              "type": "string"
+            },
+            {
+              "name": "metric_value",
+              "type": "number"
+            },
+            {
+              "name": "segment",
+              "type": "string",
+              "nullable": true,
+              "description": "Optional segment label; null if aggregated over all segments."
+            }
+          ]
+        }
+      },
+      {
+        "name": "pairwise_metrics",
+        "type": "array",
+        "required": true,
+        "description": "Pairwise agreement and error correlation metrics between models.",
+        "items": {
+          "type": "object",
+          "properties": [
+            {
+              "name": "model_id_1",
+              "type": "string"
+            },
+            {
+              "name": "model_id_2",
+              "type": "string"
+            },
+            {
+              "name": "dataset_id",
+              "type": "string"
+            },
+            {
+              "name": "segment",
+              "type": "string",
+              "nullable": true
+            },
+            {
+              "name": "agreement_rate",
+              "type": "number",
+              "description": "pairwise_prediction_agreement_rate"
+            },
+            {
+              "name": "error_correlation",
+              "type": "number",
+              "nullable": true,
+              "description": "pairwise_error_correlation; null if no labels."
+            },
+            {
+              "name": "disagreement_rate_on_errors",
+              "type": "number",
+              "nullable": true
+            }
+          ]
+        }
+      },
+      {
+        "name": "portfolio_level_metrics",
+        "type": "array",
+        "required": true,
+        "description": "Aggregated portfolio diversity and cluster metrics.",
+        "items": {
+          "type": "object",
+          "properties": [
+            {
+              "name": "dataset_id",
+              "type": "string"
+            },
+            {
+              "name": "segment",
+              "type": "string",
+              "nullable": true
+            },
+            {
+              "name": "portfolio_diversity_index",
+              "type": "number"
+            },
+            {
+              "name": "model_cluster_separation_score",
+              "type": "number",
+              "nullable": true
+            },
+            {
+              "name": "critical_segment_correlation_index",
+              "type": "number",
+              "nullable": true
+            }
+          ]
+        }
+      },
+      {
+        "name": "shift_comparison_metrics",
+        "type": "array",
+        "required": false,
+        "description": "Metrics comparing core and shifted datasets, if WL3 is executed.",
+        "items": {
+          "type": "object",
+          "properties": [
+            {
+              "name": "model_id_1",
+              "type": "string"
+            },
+            {
+              "name": "model_id_2",
+              "type": "string"
+            },
+            {
+              "name": "agreement_under_shift_delta",
+              "type": "number",
+              "nullable": true
+            },
+            {
+              "name": "error_correlation_under_shift_delta",
+              "type": "number",
+              "nullable": true
+            }
+          ]
+        }
+      },
+      {
+        "name": "key_findings",
+        "type": "object",
+        "required": true,
+        "description": "Short, interpretable summary of what the experiment revealed about model diversity and risk.",
+        "properties": [
+          {
+            "name": "redundant_clusters_description",
+            "type": "string",
+            "description": "Narrative summary of any highly correlated model clusters and where they appear in the portfolio."
+          },
+          {
+            "name": "useful_dissenting_models_description",
+            "type": "string",
+            "description": "Narrative summary of any models that behave differently in a way that could support resilience or second opinions."
+          },
+          {
+            "name": "high_risk_segments_description",
+            "type": "string",
+            "description": "Narrative summary of segments where shared errors or high agreement create significant monoculture risk."
+          },
+          {
+            "name": "recommended_actions",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of recommended strategic or technical actions derived from the experiment."
+          }
+        ]
+      }
+    ]
+  }
+}

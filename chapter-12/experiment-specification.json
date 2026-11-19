@@ -1,0 +1,594 @@
+{
+  "experiment_id": "exp-12-monitoring-drift-feedback-monoculture-v1",
+  "hypothesis": "Continuous, longitudinal monitoring of multiple models with shared drift and feedback-loop indicators will detect emerging algorithmic monoculture and harmful feedback dynamics significantly earlier\u2014and with fewer false positives\u2014than periodic, static assessments alone, enabling executives to intervene before risks materialize in key business outcomes.",
+  "baseline": {
+    "description": "Current-state, largely static assessment approach. Models are reviewed infrequently (e.g., quarterly or annually) using one-off reports, spot checks, and offline validation, without unified longitudinal monitoring across models or explicit tracking of feedback loops.",
+    "characteristics": [
+      "Model performance and risk are assessed at fixed intervals (e.g., quarterly) via static reports.",
+      "Each model is typically reviewed in isolation by its owning team; limited cross-model comparison.",
+      "No central, standardized set of drift/feedback indicators or executive-facing thresholds.",
+      "Weak or ad hoc instrumentation of production systems; logs are collected but not systematically analyzed for drift.",
+      "No dedicated dashboards or automated alerts for monoculture convergence or feedback loops.",
+      "Corrective actions are reactive, often triggered by incidents, regulator queries, or anecdotal complaints."
+    ],
+    "assessment_process": {
+      "frequency": "Quarterly or ad hoc post-incident.",
+      "inputs": [
+        "Offline validation datasets prepared by each team.",
+        "Summary performance metrics (e.g., accuracy, AUC, revenue uplift) for individual models.",
+        "Compliance and audit reports where applicable."
+      ],
+      "outputs": [
+        "Static PDF/slide reports per model.",
+        "Non-standardized recommendations, rarely tied to portfolio-level monoculture risk."
+      ]
+    }
+  },
+  "treatment": {
+    "description": "Longitudinal, centralized monitoring across multiple models and decision domains, using standardized drift and feedback-loop indicators, automated dashboards, and alerts designed to surface emerging monoculture and self-reinforcing model behaviors to executives and governance bodies.",
+    "components": [
+      "Shared indicator library for drift, convergence, and feedback loops, aligned to executive-relevant risk categories.",
+      "Unified monitoring pipeline that ingests production model inputs, outputs, and key business outcome signals across multiple models.",
+      "Periodic evaluation (e.g., daily/weekly) of indicators with trend analysis, not just point-in-time snapshots.",
+      "Cross-model comparison metrics (e.g., agreement rates, output correlation, synchronized drift events).",
+      "Simple, executive-facing dashboards with traffic-light thresholds and exception reports.",
+      "Governance hooks: pre-defined escalation paths and response playbooks when indicators cross thresholds."
+    ],
+    "implementation_artifacts": {
+      "repository_path": "monitoring/experiment_3_drift_feedback_monoculture",
+      "notebooks": [
+        "01_data_ingestion_and_schema_validation.ipynb",
+        "02_drift_and_convergence_indicators.ipynb",
+        "03_feedback_loop_signal_detection.ipynb",
+        "04_dashboard_mockups_and_alert_logic.ipynb"
+      ],
+      "scripts": [
+        "jobs/run_daily_monitoring.py",
+        "jobs/compute_indicators.py",
+        "jobs/generate_exception_report.py"
+      ],
+      "configuration_files": [
+        "config/models.yaml",
+        "config/indicators.yaml",
+        "config/alert_thresholds.yaml"
+      ]
+    }
+  },
+  "workloads": [
+    {
+      "name": "Credit_Risk_Portfolio_Monitoring",
+      "description": "Monitor multiple credit risk scoring models used in different regions or product lines, assessing drift, convergence of risk scores, and potential feedback loops driven by approvals/denials.",
+      "domain": "Financial services \u2013 credit decisioning",
+      "models_included": [
+        {
+          "model_id": "CRD_A",
+          "type": "Gradient boosted trees",
+          "owner": "Retail_Consumer_Credit"
+        },
+        {
+          "model_id": "CRD_B",
+          "type": "Vendor SaaS credit model",
+          "owner": "SME_Lending"
+        },
+        {
+          "model_id": "CRD_C",
+          "type": "Logistic regression benchmark",
+          "owner": "Risk_Methodology_Team"
+        }
+      ],
+      "data_streams": [
+        "Application features at decision time (X_t).",
+        "Model scores and decisions (approve/decline, price).",
+        "Downstream outcomes (default, delinquency, manual overrides).",
+        "Customer behavior signals (early repayments, churn where applicable)."
+      ],
+      "business_objectives": [
+        "Maintain stable default rates within predefined envelopes across products.",
+        "Avoid synchronized tightening/loosening of credit across models.",
+        "Detect self-reinforcing exclusion of particular segments due to model decisions."
+      ],
+      "time_horizon": "Minimum 6\u201312 months of historical data; experiment runs over at least 3 months in pilot."
+    },
+    {
+      "name": "Customer_Support_and_Routing_Monitoring",
+      "description": "Monitor multiple models that classify and route customer support tickets (e.g., to self-service, bot, or human tiers), tracking drift in intent distributions, convergence in routing behavior, and feedback loops from deflection policies.",
+      "domain": "Customer operations / CX",
+      "models_included": [
+        {
+          "model_id": "SUP_INTENT_A",
+          "type": "Fine-tuned transformer classifier",
+          "owner": "Customer_Support_AI"
+        },
+        {
+          "model_id": "SUP_ROUTING_B",
+          "type": "Rules+ML hybrid router",
+          "owner": "Contact_Center_Operations"
+        }
+      ],
+      "data_streams": [
+        "Raw ticket text and metadata at intake.",
+        "Predicted intents/categories and routing decisions.",
+        "Customer satisfaction scores, recontact rates, escalations.",
+        "Manual re-routings and policy changes by supervisors."
+      ],
+      "business_objectives": [
+        "Maintain or improve customer satisfaction and first-contact resolution.",
+        "Avoid monoculture routing where most tickets are pushed to the same channel irrespective of nuanced intent.",
+        "Detect feedback loops where aggressive deflection worsens data quality and future model behavior."
+      ],
+      "time_horizon": "At least several weeks of high-volume data; experiment runs over 2\u20133 months."
+    },
+    {
+      "name": "Recommendation_and_Personalization_Monitoring",
+      "description": "Monitor multiple recommendation or ranking models used across channels (web, app, email) to detect convergence in recommended items, narrowing of content diversity, and reinforcement of popularity loops.",
+      "domain": "Digital channels / e-commerce / content platforms",
+      "models_included": [
+        {
+          "model_id": "REC_WEB",
+          "type": "Matrix factorization + boosting",
+          "owner": "Digital_Product_Team"
+        },
+        {
+          "model_id": "REC_APP",
+          "type": "Deep learning recommender",
+          "owner": "Mobile_App_Team"
+        },
+        {
+          "model_id": "REC_EMAIL",
+          "type": "Rules-based with ML ranking",
+          "owner": "CRM_Marketing"
+        }
+      ],
+      "data_streams": [
+        "Candidate item sets and contextual features at recommendation time.",
+        "Ranked lists and items displayed/clicked/purchased.",
+        "Diversity measures of content/catalog exposure.",
+        "Business outcomes (revenue, engagement, churn proxies)."
+      ],
+      "business_objectives": [
+        "Preserve healthy variety in user and item exposure.",
+        "Avoid runaway feedback where a narrow set of items dominate training data and recommendations.",
+        "Identify cross-channel convergence indicating emerging algorithmic monoculture."
+      ],
+      "time_horizon": "3\u20136 months of history preferably; experiment pilot for 2\u20133+ months."
+    }
+  ],
+  "controls": {
+    "experimental_controls": [
+      "Use identical time windows and sampling strategies for baseline (static snapshots extracted from logs) and treatment (longitudinal monitoring) comparisons.",
+      "Apply the same feature and outcome definitions across models within each workload to enable cross-model comparability.",
+      "Keep production decision policies constant during an initial stabilization period to avoid confounding from major business rule changes.",
+      "Version all models, indicators, and thresholds; changes are logged and timestamped so drifts can be attributed correctly.",
+      "Ensure that alert thresholds and indicator formulas are pre-specified before running the pilot to limit p-hacking or post-hoc threshold tuning."
+    ],
+    "confound_mitigation": [
+      "Record major business events (policy shifts, pricing changes, macro shocks) in a change log and use them as covariates or annotations in analysis.",
+      "Differentiate model-induced drift from population shifts by estimating reference distributions on control groups where models do not directly influence selection, where possible.",
+      "Where feedback loops are suspected, explicitly model lagged effects (e.g., outcomes 30/60/90 days post-decision)."
+    ],
+    "privacy_and_compliance": [
+      "Apply data minimization and masking for personally identifiable information before ingestion into monitoring notebooks.",
+      "Ensure monitoring access aligns with existing data governance and access-control policies."
+    ]
+  },
+  "metrics": [
+    {
+      "name": "Input_Data_Drift_Magnitude",
+      "unit": "Drift score (e.g., Jensen-Shannon divergence) per feature per time window",
+      "description": "Measures how far current input feature distributions deviate from a baseline reference period, aggregated into a normalized drift score."
+    },
+    {
+      "name": "Prediction_Distribution_Drift",
+      "unit": "Drift score (e.g., Population Stability Index) per model per time window",
+      "description": "Quantifies shifts in the distribution of model scores/outputs relative to baseline, indicating change in model behavior."
+    },
+    {
+      "name": "Cross_Model_Output_Correlation",
+      "unit": "Correlation coefficient (Pearson/Spearman) or agreement rate in %",
+      "description": "Measures how similarly different models respond to the same or comparable inputs, capturing emergent convergence or monoculture."
+    },
+    {
+      "name": "Synchronized_Drift_Events",
+      "unit": "Count of time windows with concurrent drift above threshold across \u2265 N models",
+      "description": "Counts how often multiple models exhibit substantial drift in the same period, a signal of systemic rather than isolated change."
+    },
+    {
+      "name": "Feedback_Loop_Intensity_Index",
+      "unit": "Unitless index (0\u20131 scaled) per model per period",
+      "description": "Composite measure capturing the degree to which model decisions shape future training or decision data in a self-reinforcing way (e.g., correlation between decision propensity and future sample inclusion, adjusted for baseline rates)."
+    },
+    {
+      "name": "Exposure_Diversity_Index",
+      "unit": "Diversity score (e.g., entropy, Gini-based) per model/channel per period",
+      "description": "Assesses variety in recommended items, customer segments reached, or outcomes, with declines indicating potential narrowing consistent with monoculture effects."
+    },
+    {
+      "name": "Alert_Rate",
+      "unit": "Number of alerts per model per month",
+      "description": "Frequency of triggered alerts when indicators cross configured thresholds, segmented by severity tier."
+    },
+    {
+      "name": "Time_to_Detection",
+      "unit": "Days from underlying shift start (or proxy event) to indicator threshold breach",
+      "description": "Measures how quickly the monitoring framework surfaces meaningful drift or feedback issues compared to static assessments or incident discovery."
+    },
+    {
+      "name": "False_Positive_Alert_Rate",
+      "unit": "Proportion of alerts per period judged as non-actionable after review",
+      "description": "Assesses signal quality; high values indicate noisy or poorly calibrated monitoring."
+    },
+    {
+      "name": "Governance_Response_Time",
+      "unit": "Days from critical alert to decisioned action (mitigation accepted/rejected)",
+      "description": "Evaluates how effectively alerts translate into governance responses."
+    }
+  ],
+  "success_criteria": {
+    "primary": [
+      "Time_to_Detection for meaningful shifts (validated via change log or downstream business impact) is reduced by at least 50% under the treatment monitoring framework compared to the prior static assessment cadence.",
+      "Cross_Model_Output_Correlation and Synchronized_Drift_Events can be tracked and visualized reliably across all included models, with at least one concrete instance where a systemic risk pattern (e.g., simultaneous tightening in credit or narrowing of recommendations) is identified before causing an incident or regulator prompt.",
+      "Feedback_Loop_Intensity_Index and Exposure_Diversity_Index can be computed and trended for at least two workloads, and governance bodies find them interpretable enough to integrate into regular reporting."
+    ],
+    "secondary": [
+      "False_Positive_Alert_Rate for medium/high-severity alerts remains below a pre-agreed threshold (e.g., 30%) after an initial calibration period.",
+      "Executives and risk committees adopt at least one dashboard or exception report from the experiment into their regular review pack (e.g., quarterly risk dashboards).",
+      "Governance_Response_Time for critical alerts is within an agreed SLA (e.g., 10 business days from alert to decisioned action) in at least 80% of cases during the pilot."
+    ],
+    "executive_readout_expectations": [
+      "Clear distinction between benign drift (e.g., seasonality) and concerning monoculture/feedback patterns.",
+      "Scenario-based explanation of what would have been missed under static assessment only.",
+      "Recommended policy/architecture adjustments based on observed indicators (e.g., adding secondary models, adjusting retraining logic, or modifying data collection)."
+    ]
+  },
+  "failure_modes": [
+    {
+      "name": "Inadequate_Data_Ingestion",
+      "description": "Monitoring pipeline cannot access consistent input, output, and outcome streams across models, leading to gaps or biased indicators.",
+      "mitigations": [
+        "Run 01_data_ingestion_and_schema_validation.ipynb on historical logs before live monitoring to identify gaps early.",
+        "Implement minimal common schema (e.g., timestamp, model_id, decision, key features, outcome) across teams, even if full harmonization is not immediately possible."
+      ]
+    },
+    {
+      "name": "Confusion_Between_Drift_and_Monoculture",
+      "description": "Stakeholders misinterpret normal drift (e.g., expected seasonal shifts) as monoculture risk, or fail to recognize convergence across models as distinct from single-model drift.",
+      "mitigations": [
+        "Use training examples in the dashboard that contrast single-model drift vs. synchronized cross-model convergence.",
+        "Annotate charts with known seasonality and macro events to contextualize shifts."
+      ]
+    },
+    {
+      "name": "High_False_Positive_Alert_Rate",
+      "description": "Overly sensitive thresholds generate many alerts, eroding trust and causing operational fatigue.",
+      "mitigations": [
+        "Start with conservative thresholds and a longer smoothing window, then gradually tighten based on observed performance.",
+        "Introduce alert tiers (info/warning/critical) and focus governance attention initially on critical alerts only."
+      ]
+    },
+    {
+      "name": "Governance_Inaction",
+      "description": "Alerts and dashboards are created, but governance bodies do not change decisions or policies in response, limiting practical value.",
+      "mitigations": [
+        "Define explicit escalation rules and decision owners in advance (e.g., when X metric crosses Y threshold, committee Z must decide within N days).",
+        "Pilot with a small number of high-impact metrics and link at least one to an existing risk appetite statement or regulatory expectation."
+      ]
+    },
+    {
+      "name": "Model_Versioning_Chaos",
+      "description": "Indicators mix data from multiple model versions without clear delineation, obscuring true drift and feedback patterns.",
+      "mitigations": [
+        "Require model_version as a mandatory field in monitoring logs and enforce version changes via CI/CD hooks.",
+        "Segment indicators and visualizations by version, with clear markers of deployment dates."
+      ]
+    },
+    {
+      "name": "Feedback_Loops_Not_Observable",
+      "description": "Insufficient data on how model decisions affect subsequent data generation, making feedback loops difficult to quantify.",
+      "mitigations": [
+        "Instrument downstream processes to capture whether and how decisions affect future sampling (e.g., who is re-solicited, re-evaluated, or excluded).",
+        "Start with proxy indicators (e.g., changes in population composition of applicants/customers over time conditioned on past decisions)."
+      ]
+    }
+  ],
+  "required_environment": {
+    "infrastructure": [
+      "Secure analytics environment (e.g., cloud data warehouse + compute cluster or comparable on-prem system) with access to historical and streaming model logs.",
+      "Support for running Python 3.9+ and Jupyter notebooks (or equivalent environment capable of executing the repository notebooks).",
+      "Job scheduler or orchestration tool (e.g., Airflow, Prefect, cloud-native scheduler) for running daily/weekly monitoring jobs."
+    ],
+    "software_stack": [
+      "Python data stack: pandas, numpy, scipy, scikit-learn (for metrics and drift calculations).",
+      "Optional drift libraries: alibi-detect, river, or equivalent for advanced drift detection.",
+      "Visualization: matplotlib, seaborn, plotly, or a BI tool (e.g., Power BI, Tableau, Looker) connected to monitoring tables.",
+      "Access to the companion repository at https://github.com/bookauthority/executive-algorithmic-monoculture-strategies with the experiment 3 directory cloned."
+    ],
+    "data_requirements": [
+      "Historical logs for each selected model, including at minimum: timestamp, model_id, model_version, input feature subset, predicted scores/labels, final decisions (if different), and identifiers enabling linkage to outcomes.",
+      "Outcome data with timestamps sufficient to align outcomes to decisions over relevant lags (e.g., default within 90 days; repeat contact within 7 days).",
+      "Model metadata: description, owner, use case, business unit, criticality rating, training data sources.",
+      "Change log of major policy, pricing, configuration, or regulatory events impacting the workload."
+    ],
+    "governance_prerequisites": [
+      "Named executive sponsor (e.g., CDAO or CRO) and a cross-functional experiment working group (risk, model owners, data platform).",
+      "Agreement on which 3\u20136 models are in scope for the pilot and a high-level risk appetite statement (e.g., acceptable ranges for drift and diversity)."
+    ]
+  },
+  "run_instructions": {
+    "phase_1_scoping_and_design": [
+      "Select 2\u20133 workloads (e.g., credit risk, support routing, recommendations) that are both material to the business and technically feasible for monitoring.",
+      "For each workload, inventory all models in scope and complete a minimal metadata record, including model criticality and ownership.",
+      "With risk and business stakeholders, prioritize 5\u20137 key indicators from the metrics list that align with executive concerns (e.g., cross-model correlation, default rate envelopes, exposure diversity).",
+      "Configure indicator definitions and thresholds in config/indicators.yaml and config/alert_thresholds.yaml, documenting rationale for each."
+    ],
+    "phase_2_data_ingestion_and_validation": [
+      "Clone the repository and navigate to monitoring/experiment_3_drift_feedback_monoculture.",
+      "Run 01_data_ingestion_and_schema_validation.ipynb using a representative sample of historical logs from each in-scope model to validate schema consistency and data quality.",
+      "Resolve missing fields or misalignments (e.g., differing feature names, inconsistent timestamps) with model owners; update config/models.yaml with finalized schemas.",
+      "Establish recurring data extraction from production systems (or event streams) into a centralized monitoring table/view for each workload."
+    ],
+    "phase_3_indicator_computation": [
+      "Run 02_drift_and_convergence_indicators.ipynb on historical data to compute baseline values for Input_Data_Drift_Magnitude, Prediction_Distribution_Drift, Cross_Model_Output_Correlation, Synchronized_Drift_Events, and Exposure_Diversity_Index.",
+      "Use the historical baseline runs to tune thresholds in config/alert_thresholds.yaml such that benign historical periods mostly fall within 'green' ranges and known stress periods are flagged as 'amber' or 'red'.",
+      "Deploy jobs/compute_indicators.py as a scheduled job (e.g., daily) to compute indicators for the latest data and write results to monitoring tables."
+    ],
+    "phase_4_feedback_loop_analysis": [
+      "Run 03_feedback_loop_signal_detection.ipynb for workloads where model decisions influence future data (e.g., approvals affecting who reapplies; recommendations affecting future clicks).",
+      "Estimate Feedback_Loop_Intensity_Index by analyzing how strongly past decisions predict who appears in future training or decision data, controlling for observable factors.",
+      "Flag models with consistently high or rising feedback indices as candidates for deeper review and potential design changes (e.g., exploration policies, periodic random sampling)."
+    ],
+    "phase_5_dashboard_and_alert_setup": [
+      "Execute 04_dashboard_mockups_and_alert_logic.ipynb to generate example plots and exception report formats for executive audiences.",
+      "Implement or integrate dashboards in your BI tool using the monitoring tables, focusing on a small set of top-level indicators with traffic-light statuses.",
+      "Configure jobs/run_daily_monitoring.py and jobs/generate_exception_report.py to run on your chosen schedule, delivering reports to named governance recipients (e.g., AI Risk Committee)."
+    ],
+    "phase_6_pilot_and_calibration": [
+      "Run the monitoring framework in parallel with existing static assessments for 2\u20133 cycles (e.g., 2\u20133 months).",
+      "Track Time_to_Detection by recording when monitoring first flags an issue vs. when it would have been detected under prior processes or via incidents.",
+      "Meet periodically (e.g., monthly) with stakeholders to review alerts, assess False_Positive_Alert_Rate, refine thresholds, and adjust indicator definitions if they are systematically misaligned with risk appetite."
+    ],
+    "phase_7_governance_integration_and_scale_up": [
+      "Formalize Governance_Response_Time SLAs and escalation rules based on pilot learnings; update governance charters to reference the monitoring indicators.",
+      "Decide which dashboards and exception reports become part of board or executive committee packs, and at what frequency.",
+      "Plan phased rollout to additional models and business units, reusing the established schemas, indicators, and playbooks and documenting any adaptations in the repository README or internal runbooks."
+    ]
+  },
+  "evidence_schema": {
+    "models_table": {
+      "fields": [
+        {
+          "name": "model_id",
+          "type": "string",
+          "description": "Unique identifier for each monitored model."
+        },
+        {
+          "name": "model_version",
+          "type": "string",
+          "description": "Version identifier aligned with deployment/version-control system."
+        },
+        {
+          "name": "workload_name",
+          "type": "string",
+          "description": "Name of the workload/use case (e.g., Credit_Risk_Portfolio_Monitoring)."
+        },
+        {
+          "name": "owner_team",
+          "type": "string",
+          "description": "Business or technical team responsible for the model."
+        },
+        {
+          "name": "criticality_level",
+          "type": "string",
+          "description": "Categorization of business impact (e.g., High/Medium/Low)."
+        },
+        {
+          "name": "in_production_since",
+          "type": "date",
+          "description": "Date the current model version entered production."
+        }
+      ]
+    },
+    "monitoring_indicators_table": {
+      "fields": [
+        {
+          "name": "timestamp",
+          "type": "datetime",
+          "description": "End of the time window over which indicators are computed."
+        },
+        {
+          "name": "model_id",
+          "type": "string",
+          "description": "Model to which the indicator relates (or 'portfolio' for aggregated metrics)."
+        },
+        {
+          "name": "model_version",
+          "type": "string",
+          "description": "Model version at the time of indicator computation."
+        },
+        {
+          "name": "indicator_name",
+          "type": "string",
+          "description": "Name of the metric (e.g., Input_Data_Drift_Magnitude)."
+        },
+        {
+          "name": "indicator_value",
+          "type": "float",
+          "description": "Numeric value of the indicator for the given time window."
+        },
+        {
+          "name": "indicator_unit",
+          "type": "string",
+          "description": "Unit/scale of the indicator (e.g., PSI, correlation coefficient, index 0\u20131)."
+        },
+        {
+          "name": "threshold_low",
+          "type": "float",
+          "description": "Configured lower bound threshold where applicable."
+        },
+        {
+          "name": "threshold_high",
+          "type": "float",
+          "description": "Configured upper bound threshold where applicable."
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "description": "Categorical status (e.g., 'green', 'amber', 'red')."
+        },
+        {
+          "name": "workload_name",
+          "type": "string",
+          "description": "Workload associated with the model/indicator."
+        }
+      ]
+    },
+    "cross_model_metrics_table": {
+      "fields": [
+        {
+          "name": "timestamp",
+          "type": "datetime",
+          "description": "End of the time window for the computed cross-model metric."
+        },
+        {
+          "name": "workload_name",
+          "type": "string",
+          "description": "Workload for which the cross-model metric is computed."
+        },
+        {
+          "name": "model_id_a",
+          "type": "string",
+          "description": "First model in the pair."
+        },
+        {
+          "name": "model_id_b",
+          "type": "string",
+          "description": "Second model in the pair."
+        },
+        {
+          "name": "metric_name",
+          "type": "string",
+          "description": "Name of the cross-model metric (e.g., Cross_Model_Output_Correlation)."
+        },
+        {
+          "name": "metric_value",
+          "type": "float",
+          "description": "Computed value of the cross-model metric."
+        }
+      ]
+    },
+    "feedback_loop_table": {
+      "fields": [
+        {
+          "name": "timestamp",
+          "type": "datetime",
+          "description": "End of the observation window for feedback analysis."
+        },
+        {
+          "name": "model_id",
+          "type": "string",
+          "description": "Model associated with the feedback index."
+        },
+        {
+          "name": "feedback_loop_intensity_index",
+          "type": "float",
+          "description": "Composite index measuring strength of feedback loops (0\u20131)."
+        },
+        {
+          "name": "exposure_diversity_index",
+          "type": "float",
+          "description": "Diversity score of exposures/recommendations for the period."
+        },
+        {
+          "name": "reference_group",
+          "type": "string",
+          "description": "Optional reference group or segment (e.g., region, segment) used in the analysis."
+        }
+      ]
+    },
+    "alerts_table": {
+      "fields": [
+        {
+          "name": "alert_id",
+          "type": "string",
+          "description": "Unique identifier for the alert."
+        },
+        {
+          "name": "timestamp",
+          "type": "datetime",
+          "description": "Time when the alert was generated."
+        },
+        {
+          "name": "workload_name",
+          "type": "string",
+          "description": "Workload in which the alert occurred."
+        },
+        {
+          "name": "model_id",
+          "type": "string",
+          "description": "Model associated with the alert, if applicable."
+        },
+        {
+          "name": "indicator_name",
+          "type": "string",
+          "description": "Indicator that triggered the alert."
+        },
+        {
+          "name": "indicator_value",
+          "type": "float",
+          "description": "Indicator value at the time of alert."
+        },
+        {
+          "name": "severity",
+          "type": "string",
+          "description": "Alert severity (e.g., info, warning, critical)."
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "description": "Lifecycle status (e.g., open, under_review, closed_no_action, closed_mitigated)."
+        },
+        {
+          "name": "governance_decision_id",
+          "type": "string",
+          "description": "Link to decision record in governance_decisions_table."
+        }
+      ]
+    },
+    "governance_decisions_table": {
+      "fields": [
+        {
+          "name": "decision_id",
+          "type": "string",
+          "description": "Unique identifier for a governance decision related to one or more alerts."
+        },
+        {
+          "name": "alert_id",
+          "type": "string",
+          "description": "Primary alert driving the decision, if applicable."
+        },
+        {
+          "name": "decision_timestamp",
+          "type": "datetime",
+          "description": "Time when the governance decision was made."
+        },
+        {
+          "name": "decision_type",
+          "type": "string",
+          "description": "Type of decision (e.g., no_action, adjust_thresholds, retrain_model, introduce_secondary_model, modify_data_collection)."
+        },
+        {
+          "name": "rationale_summary",
+          "type": "string",
+          "description": "Short text summary explaining the decision rationale for audit and learning."
+        }
+      ]
+    },
+    "executive_summary_artifacts": {
+      "description": "Non-technical artifacts intended for executive and board consumption that summarize experimental evidence and its implications.",
+      "expected_outputs": [
+        "Quarterly or monthly one-page executive summary with key indicator trends and highlighted alerts for each critical workload.",
+        "Portfolio-level heatmap of Cross_Model_Output_Correlation and Synchronized_Drift_Events across key decision systems.",
+        "Case-style narratives for any significant drift or feedback-loop event detected early by the monitoring framework, including contrast with what static assessment would have captured."
+      ]
+    }
+  }
+}

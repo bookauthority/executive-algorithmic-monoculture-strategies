@@ -1,0 +1,2 @@
+# This experiment is intentionally implemented using only the Python standard library.
+# No third-party runtime dependencies are required.

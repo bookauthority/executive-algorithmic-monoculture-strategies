@@ -1,0 +1,547 @@
+{
+  "experiment_id": "exp-9-stress-testing-ai-portfolios-under-scenario-shocks-v1",
+  "hypothesis": "Compared with a monoculture-style baseline portfolio, a deliberately diversified AI portfolio will exhibit (a) smaller performance degradation under a range of realistic shock scenarios, (b) faster recovery once conditions normalize or mitigations are applied, and (c) fewer correlated hard failures concentrated in a single model, vendor, or infrastructure layer.",
+  "baseline": {
+    "description": "Monoculture-leaning AI portfolio representative of many large enterprises: a single primary vendor/platform and a small set of closely related models serving multiple critical decision domains.",
+    "portfolio_profile": {
+      "models": [
+        {
+          "id": "baseline_primary_model",
+          "type": "binary_classifier",
+          "description": "Single primary production model used across multiple business capabilities (e.g., risk scoring, eligibility decisions).",
+          "vendor": "vendor_A_cloud_platform",
+          "architecture": "gradient_boosted_trees",
+          "deployment_pattern": "central_model_service_v1"
+        }
+      ],
+      "decision_domains": [
+        "credit_risk_scoring",
+        "fraud_detection",
+        "customer_churn_prediction",
+        "marketing_eligibility"
+      ],
+      "platform_dependencies": [
+        "cloud_provider_A_region_1",
+        "managed_feature_store_A",
+        "centralized_model_serving_A"
+      ],
+      "data_feeds": [
+        "internal_transactions_v1",
+        "crm_customers_v1",
+        "credit_bureau_feed_v1"
+      ]
+    },
+    "stress_behavior_expectation": "Under shocks, the baseline portfolio is expected to show high correlation in failures across decision domains (because they share the same model and platform), greater sensitivity to vendor or data feed outages, and slower, more manual recovery because fallback models and redundant paths are minimal or absent."
+  },
+  "treatment": {
+    "description": "Deliberately diversified AI portfolio with multiple models, vendors, and decision paths for critical decisions, designed to reduce correlated failures and improve resilience under scenario shocks.",
+    "portfolio_profile": {
+      "models": [
+        {
+          "id": "treatment_core_model_A",
+          "type": "binary_classifier",
+          "description": "Primary model for credit risk, distinct architecture from other domains.",
+          "vendor": "vendor_A_cloud_platform",
+          "architecture": "gradient_boosted_trees",
+          "deployment_pattern": "credit_model_service_v2"
+        },
+        {
+          "id": "treatment_core_model_B",
+          "type": "binary_classifier",
+          "description": "Primary model for fraud detection; different architecture and feature set, with partial vendor independence.",
+          "vendor": "vendor_B_managed_ml",
+          "architecture": "deep_neural_network",
+          "deployment_pattern": "fraud_model_service_v1"
+        },
+        {
+          "id": "treatment_fallback_rule_engine",
+          "type": "rule_engine",
+          "description": "Rules-based fallback for critical decisions, used when primary models are unavailable or fail validation.",
+          "vendor": "on_prem_rules_engine",
+          "architecture": "rule_based",
+          "deployment_pattern": "fallback_rules_service_v1"
+        },
+        {
+          "id": "treatment_shadow_model_C",
+          "type": "binary_classifier",
+          "description": "Secondary model trained on partially independent data source, used for shadow scoring and failover in high-value segments.",
+          "vendor": "vendor_C_custom_stack",
+          "architecture": "logistic_regression",
+          "deployment_pattern": "shadow_model_service_v1"
+        }
+      ],
+      "decision_domains": [
+        "credit_risk_scoring",
+        "fraud_detection",
+        "customer_churn_prediction",
+        "marketing_eligibility"
+      ],
+      "platform_dependencies": [
+        "cloud_provider_A_region_1",
+        "cloud_provider_B_region_2",
+        "on_prem_kubernetes_cluster",
+        "separate_feature_store_B"
+      ],
+      "data_feeds": [
+        "internal_transactions_v1",
+        "crm_customers_v1",
+        "alt_data_provider_v2",
+        "batched_credit_bureau_backup_v1"
+      ]
+    },
+    "stress_behavior_expectation": "Under the same shocks, the diversified portfolio is expected to show (1) lower correlation of severe errors across domains, (2) the ability to route a portion of traffic to alternate models or paths, and (3) measurable improvements in service continuity and recovery time even when one vendor, region, or data source is impaired."
+  },
+  "workloads": [
+    {
+      "id": "wl-credit-risk-batch",
+      "description": "Batch credit risk scoring workload representing daily or hourly loan application processing.",
+      "input_profile": {
+        "data_source": "synthetic_or_realistic_credit_applications",
+        "volume_per_run": 100000,
+        "feature_schema_ref": "schemas/credit_risk_features_v1.json"
+      },
+      "execution_pattern": "batch",
+      "applicable_scenarios": [
+        "regulatory_shift_stricter_thresholds",
+        "market_distribution_shift",
+        "partial_data_feed_outage",
+        "vendor_region_outage",
+        "adversarial_input_spike"
+      ]
+    },
+    {
+      "id": "wl-fraud-streaming",
+      "description": "Streaming fraud detection workload representing near-real-time transaction scoring.",
+      "input_profile": {
+        "data_source": "synthetic_or_realistic_transactions",
+        "events_per_minute": 5000,
+        "feature_schema_ref": "schemas/fraud_features_v1.json"
+      },
+      "execution_pattern": "streaming_simulation",
+      "applicable_scenarios": [
+        "market_distribution_shift",
+        "partial_data_feed_outage",
+        "vendor_region_outage",
+        "latency_spike_under_load"
+      ]
+    },
+    {
+      "id": "wl-churn-batch",
+      "description": "Batch customer churn prediction workload representing monthly or weekly risk stratification.",
+      "input_profile": {
+        "data_source": "synthetic_or_realistic_customer_records",
+        "volume_per_run": 200000,
+        "feature_schema_ref": "schemas/churn_features_v1.json"
+      },
+      "execution_pattern": "batch",
+      "applicable_scenarios": [
+        "market_distribution_shift",
+        "regulatory_shift_feature_restriction",
+        "partial_data_feed_outage"
+      ]
+    },
+    {
+      "id": "wl-eligibility-api",
+      "description": "Online eligibility decision API workload representing end-customer or internal system calls.",
+      "input_profile": {
+        "data_source": "synthetic_or_recorded_api_calls",
+        "requests_per_minute": 2000,
+        "request_schema_ref": "schemas/eligibility_request_v1.json"
+      },
+      "execution_pattern": "online_api_simulation",
+      "applicable_scenarios": [
+        "vendor_region_outage",
+        "latency_spike_under_load",
+        "adversarial_input_spike"
+      ]
+    }
+  ],
+  "controls": {
+    "randomness_control": {
+      "description": "Ensure that stochastic elements (data sampling, random seeds, traffic routing in simulation) are controlled so baseline and treatment see comparable conditions.",
+      "measures": [
+        "Use fixed random seeds for data generation and sampling (e.g., seed=42) documented in config files.",
+        "For each scenario, generate one canonical input dataset or event stream and replay exactly the same sequence for baseline and treatment runs.",
+        "Store scenario configuration (including random seeds, perturbation parameters, and outage timings) in version-controlled YAML/JSON files under `experiments/exp2_stress_tests/configs/`."
+      ]
+    },
+    "environment_control": {
+      "description": "Run baseline and treatment in as similar an execution environment as possible, differing only in portfolio configuration.",
+      "measures": [
+        "Use identical hardware instance types (e.g., same CPU/GPU, memory) for both portfolios.",
+        "Run both portfolios in the same cloud account or cluster, with isolated namespaces for baseline and treatment.",
+        "Pin library and framework versions using the provided `environment.yml` or `requirements.txt`.",
+        "Disable auto-scaling changes during a single experiment run; if auto-scaling must be tested, do so in a dedicated scenario with identical policies for both portfolios."
+      ]
+    },
+    "scenario_control": {
+      "description": "Apply the same shock definitions to both portfolios for direct comparability.",
+      "measures": [
+        "Define each shock scenario declaratively (e.g., YAML under `configs/scenarios/`) with parameters such as start_time, duration, intensity, and affected_components.",
+        "Use the same scenario definitions when running baseline and treatment; do not alter shock intensity between them.",
+        "Run baseline and treatment back-to-back or in parallel with synchronized scenario triggers, logging timestamps for alignment."
+      ]
+    },
+    "measurement_control": {
+      "description": "Use consistent metric definitions, aggregation windows, and logging formats across all runs.",
+      "measures": [
+        "Centralize metric computation in shared utility functions (e.g., `metrics.py`) to avoid drift in definitions.",
+        "Log raw per-request/per-record outcomes and latencies with portfolio_id and scenario_id fields for post-hoc analysis.",
+        "Maintain a mapping table of business segments or cohorts so that portfolio comparisons can be conditioned on identical segment definitions."
+      ]
+    }
+  },
+  "metrics": [
+    {
+      "name": "task_performance_score",
+      "description": "Primary effectiveness metric for the workload, e.g., AUC for classifiers or accuracy; scenario-specific but consistently defined across portfolios.",
+      "unit": "dimensionless_score_between_0_and_1"
+    },
+    {
+      "name": "performance_degradation_pct",
+      "description": "Relative drop in task_performance_score under a shock scenario compared to the steady-state baseline of the same portfolio.",
+      "unit": "percent"
+    },
+    {
+      "name": "error_rate",
+      "description": "Proportion of incorrect or failed decisions (e.g., misclassifications, policy violations) over the workload during the scenario.",
+      "unit": "fraction_between_0_and_1"
+    },
+    {
+      "name": "service_unavailability_pct",
+      "description": "Fraction of requests or batch jobs that fail outright (e.g., timeouts, HTTP 5xx, missing outputs) during the scenario window.",
+      "unit": "percent_of_requests_or_jobs"
+    },
+    {
+      "name": "p95_latency_ms",
+      "description": "95th percentile end-to-end response latency for online or streaming workloads.",
+      "unit": "milliseconds"
+    },
+    {
+      "name": "recovery_time_minutes",
+      "description": "Elapsed time from shock cessation or mitigation trigger to restoration of predefined acceptable performance levels.",
+      "unit": "minutes"
+    },
+    {
+      "name": "portfolio_failure_correlation",
+      "description": "Correlation of failure events (e.g., errors, timeouts) across decision domains within a portfolio during a scenario.",
+      "unit": "correlation_coefficient_between_-1_and_1"
+    },
+    {
+      "name": "fallback_activation_rate",
+      "description": "Proportion of decisions that had to use fallback models or rules during a scenario.",
+      "unit": "percent_of_total_decisions"
+    },
+    {
+      "name": "vendor_concentration_failure_share",
+      "description": "Share of failures attributable to a single vendor or platform component (e.g., one cloud region) during a scenario.",
+      "unit": "percent_of_total_failures"
+    }
+  ],
+  "success_criteria": {
+    "description": "Criteria under which the experiment supports the working hypothesis that a diversified portfolio is more resilient than a monoculture-style baseline.",
+    "comparative_thresholds": [
+      {
+        "metric": "performance_degradation_pct",
+        "condition": "treatment_mean < baseline_mean - 10",
+        "interpretation": "Across key workloads and scenarios, the diversified portfolio shows at least 10 percentage points less performance degradation than the baseline."
+      },
+      {
+        "metric": "recovery_time_minutes",
+        "condition": "treatment_mean < 0.5 * baseline_mean",
+        "interpretation": "Mean recovery time for the treatment portfolio is less than half that of the baseline for the same scenarios."
+      },
+      {
+        "metric": "portfolio_failure_correlation",
+        "condition": "treatment_mean < baseline_mean - 0.2",
+        "interpretation": "Failure correlation across decision domains is at least 0.2 lower in the diversified portfolio, indicating reduced systemic synchrony of failures."
+      },
+      {
+        "metric": "service_unavailability_pct",
+        "condition": "treatment_mean < baseline_mean - 5",
+        "interpretation": "Service unavailability is reduced by at least 5 percentage points in the diversified portfolio under vendor and infrastructure shock scenarios."
+      }
+    ],
+    "executive_usable_outcome": "If these conditions hold across multiple independent runs and a representative subset of realistic scenarios, executives can treat diversification (as instantiated in the treatment configuration) as empirically supported for improving resilience and reducing monoculture-related concentration risk."
+  },
+  "failure_modes": {
+    "experimental_failure_modes": [
+      {
+        "name": "non_comparable_scenarios",
+        "description": "Baseline and treatment were accidentally tested under different shock intensities, timings, or workloads, invalidating direct comparison.",
+        "detection": "Scenario configuration hashes or IDs differ between baseline and treatment logs; time series of shock indicators do not align.",
+        "mitigation": "Re-run experiments using the same scenario configuration files; automate scenario_id validation at run start."
+      },
+      {
+        "name": "environment_drift",
+        "description": "Differences in infrastructure (e.g., hardware class, autoscaling policies) confound observed resilience differences between portfolios.",
+        "detection": "Infrastructure metadata (instance types, node counts) differ across baseline and treatment runs; sudden changes during an experiment window.",
+        "mitigation": "Standardize infrastructure via infrastructure-as-code templates; enforce environment checks in setup scripts before a run proceeds."
+      },
+      {
+        "name": "metric_definition_inconsistency",
+        "description": "Task performance or failure metrics are computed differently between portfolios or runs.",
+        "detection": "Presence of multiple metric computation versions in logs; discrepancies when recomputing metrics offline from raw data.",
+        "mitigation": "Centralize metric computation; version metric definitions and include metric_version in all logs and evidence records."
+      },
+      {
+        "name": "insufficient_traffic_or_sample_size",
+        "description": "Workloads are too small or too short to reliably observe degradation and recovery patterns.",
+        "detection": "High variance in metrics across repeated runs; confidence intervals overlapping widely between baseline and treatment.",
+        "mitigation": "Increase event volume, duration, or number of repeated runs per scenario; predefine minimum sample size thresholds."
+      }
+    ],
+    "portfolio_failure_modes": [
+      {
+        "name": "hidden_coupling_via_data_or_features",
+        "description": "Treatment portfolio appears diversified but multiple models depend on the same preprocessed features or data pipeline, leading to correlated failures under data shocks.",
+        "indicator": "High portfolio_failure_correlation persists in data-related shock scenarios despite multiple models and vendors.",
+        "executive_implication": "Architectural and data diversification require further work; mitigation efforts focused solely on model variety may be insufficient."
+      },
+      {
+        "name": "fallback_overuse_degradation",
+        "description": "In the diversified portfolio, fallback mechanisms activate frequently under stress, maintaining availability but sharply degrading decision quality.",
+        "indicator": "High fallback_activation_rate coinciding with large performance_degradation_pct but low service_unavailability_pct.",
+        "executive_implication": "Fallback strategies may need refinement (e.g., better rules, more capable backup models, or tighter guardrails) to avoid hidden quality risk."
+      },
+      {
+        "name": "complexity_induced_instability",
+        "description": "Increased architectural complexity in the diversified portfolio introduces configuration errors or routing bugs that offset resilience gains.",
+        "indicator": "Treatment shows new categories of failures (e.g., misrouting, inconsistent versions across services) not present in the baseline.",
+        "executive_implication": "Diversification must be paired with strong engineering discipline and observability; otherwise, complexity risk can counteract resilience benefits."
+      }
+    ]
+  },
+  "required_environment": {
+    "infrastructure": {
+      "compute": [
+        "Access to a cloud environment or on-prem cluster capable of running two parallel portfolios (baseline and treatment) with similar resource profiles.",
+        "At least one node type with sufficient CPU and memory to handle peak workloads defined under `workloads` (e.g., 16 vCPUs, 64 GB RAM per portfolio namespace as a starting point)."
+      ],
+      "network": [
+        "Internal networking that supports routing synthetic or replayed workloads to both portfolios.",
+        "Ability to simulate or configure network impairments (e.g., region isolation, latency injection) in a controlled test environment."
+      ],
+      "storage": [
+        "Persistent storage for input datasets, logs, and experiment outputs (e.g., object storage bucket `stress_tests/exp2/`).",
+        "Version-controlled configuration storage for scenarios and portfolio definitions."
+      ]
+    },
+    "software": {
+      "languages_and_frameworks": [
+        "Python 3.9+ (or version specified in repo).",
+        "ML frameworks appropriate to the example models (e.g., scikit-learn, XGBoost, TensorFlow or PyTorch, as per repo examples)."
+      ],
+      "orchestration_and_tooling": [
+        "Container runtime (e.g., Docker) and optionally Kubernetes for deploying baseline and treatment services.",
+        "Load generation tools or custom scripts for simulating workloads (provided in companion repo).",
+        "Monitoring/logging stack (e.g., Prometheus + Grafana, or equivalent) or at minimum structured log collection to files."
+      ],
+      "repository_artifacts": [
+        "Clone of `https://github.com/bookauthority/executive-algorithmic-monoculture-strategies`.",
+        "Within the repo, the `experiments/exp2_stress_tests/` directory containing:",
+        " - `configs/portfolios/baseline_portfolio.yml`",
+        " - `configs/portfolios/treatment_portfolio.yml`",
+        " - `configs/scenarios/*.yml` for defined shock scenarios",
+        " - `scripts/run_scenario.py` for orchestrating runs",
+        " - `scripts/generate_workload.py` for workload simulation",
+        " - `scripts/collect_metrics.py` for aggregating results",
+        " - `notebooks/exp2_analysis.ipynb` for post-run analysis and visualization"
+      ]
+    },
+    "data": {
+      "synthetic_option": [
+        "Synthetic datasets matching the schemas referenced in workloads, generated via `generate_workload.py` or data generation notebooks.",
+        "Documented distributions and parameters for normal and shocked conditions (e.g., fraud rate multipliers, feature drifts)."
+      ],
+      "anonymized_real_option": [
+        "Optionally, anonymized or masked production-like data conforming to the same schemas, subject to organizational data governance and privacy policies.",
+        "If used, keep a separate configuration layer to avoid committing sensitive parameters back to the public repository."
+      ]
+    }
+  },
+  "run_instructions": {
+    "audience_note": "These instructions are intended for your technical team. Executives should focus on selecting relevant scenarios, setting acceptable thresholds for resilience metrics, and interpreting high-level results.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Set up the environment and dependencies",
+        "actions": [
+          "Clone the repository: `git clone https://github.com/bookauthority/executive-algorithmic-monoculture-strategies`.",
+          "Change directory: `cd executive-algorithmic-monoculture-strategies/experiments/exp2_stress_tests`.",
+          "Create and activate a virtual environment (e.g., `python -m venv .venv && source .venv/bin/activate` or use Conda).",
+          "Install dependencies: `pip install -r requirements.txt` or `conda env create -f environment.yml` as provided.",
+          "Verify versions by running `python scripts/check_env.py` if available; confirm that checks pass and versions match those documented in the README."
+        ]
+      },
+      {
+        "step": 2,
+        "title": "Review and, if needed, adapt portfolio configurations",
+        "actions": [
+          "Open `configs/portfolios/baseline_portfolio.yml` and confirm it reflects a monoculture-style configuration relevant to your organization (single primary model, shared platform, shared data).",
+          "Open `configs/portfolios/treatment_portfolio.yml` and confirm it reflects your intended diversification strategy (multiple models, vendors, and fallbacks).",
+          "If mapping to your own systems, replace the example model and endpoint definitions with your actual service endpoints or deployment specs, preserving the configuration schema.",
+          "Record any changes in a change log (e.g., `configs/portfolios/CHANGELOG.md`) to maintain traceability for results."
+        ]
+      },
+      {
+        "step": 3,
+        "title": "Select and configure scenario shocks",
+        "actions": [
+          "Review example scenario configs in `configs/scenarios/`, such as:",
+          " - `regulatory_shift_stricter_thresholds.yml`",
+          " - `market_distribution_shift.yml`",
+          " - `partial_data_feed_outage.yml`",
+          " - `vendor_region_outage.yml`",
+          " - `latency_spike_under_load.yml`",
+          "For each scenario you want to test, confirm or edit parameters such as `start_time`, `duration`, `intensity`, `affected_components`, and `workloads`.",
+          "If introducing organization-specific scenarios (e.g., specific regulatory changes or vendor dependencies), add new scenario config files following the existing schema.",
+          "Assign each scenario a unique `scenario_id` and ensure it is referenced consistently in logs and run metadata."
+        ]
+      },
+      {
+        "step": 4,
+        "title": "Generate or prepare workloads",
+        "actions": [
+          "For synthetic workloads, run `python scripts/generate_workload.py --config configs/workloads/default_workloads.yml --output data/generated/`.",
+          "Verify that the generated data files exist and conform to the schemas referenced in `workloads`.",
+          "If using anonymized real data, place them in `data/real/` and update the relevant workload configuration file to point to these datasets.",
+          "Run quick sanity checks (e.g., `python scripts/validate_data.py`) to ensure feature distributions and label balances look reasonable before stress-testing."
+        ]
+      },
+      {
+        "step": 5,
+        "title": "Deploy baseline and treatment portfolios",
+        "actions": [
+          "Use the provided deployment scripts or your internal CI/CD pipelines to deploy the baseline portfolio specified in `baseline_portfolio.yml` to a dedicated namespace or environment segment.",
+          "Similarly, deploy the treatment portfolio from `treatment_portfolio.yml` to a separate namespace with matching resource allocations.",
+          "Verify health checks and baseline performance by running a small, non-shocked trial workload (e.g., `scripts/run_scenario.py --scenario_id smoke_test --portfolio baseline` and treatment).",
+          "Confirm that both portfolios record metrics and logs to the designated storage location (e.g., `results/exp2/raw/`)."
+        ]
+      },
+      {
+        "step": 6,
+        "title": "Run stress tests for each scenario",
+        "actions": [
+          "For each selected scenario, execute baseline and treatment runs using the same workload and scenario configuration.",
+          "Example command for baseline: `python scripts/run_scenario.py --scenario_id vendor_region_outage --portfolio baseline --seed 42`.",
+          "Example command for treatment: `python scripts/run_scenario.py --scenario_id vendor_region_outage --portfolio treatment --seed 42`.",
+          "Ensure that runs are either time-synchronized (if executed in parallel) or that start times and scenario parameters are logged precisely for later alignment.",
+          "Repeat each scenario multiple times (e.g., 3\u20135 runs with different seeds) if feasible, to estimate variability and improve robustness of conclusions."
+        ]
+      },
+      {
+        "step": 7,
+        "title": "Collect and aggregate metrics",
+        "actions": [
+          "After runs complete, execute `python scripts/collect_metrics.py --input_dir results/exp2/raw --output_file results/exp2/aggregated_metrics.csv`.",
+          "Confirm that the aggregated metrics file includes fields like `portfolio_id`, `scenario_id`, `workload_id`, `metric_name`, `metric_value`, `metric_version`, `run_id`.",
+          "Inspect summary statistics for anomalies (e.g., obviously impossible values, missing metrics) and re-run any failed or corrupted experiments.",
+          "Archive raw logs and intermediate files in a timestamped directory to support auditability and future re-analysis."
+        ]
+      },
+      {
+        "step": 8,
+        "title": "Analyze and visualize results",
+        "actions": [
+          "Open `notebooks/exp2_analysis.ipynb` in Jupyter or compatible environment.",
+          "Load the aggregated metrics file and generate comparative plots, such as:",
+          " - Performance degradation vs. scenario intensity for baseline vs. treatment.",
+          " - Recovery time distributions by scenario.",
+          " - Failure correlation heatmaps across decision domains for each portfolio.",
+          " - Service unavailability and fallback activation rates during vendor or data outages.",
+          "Export key figures to image files (e.g., PNG) under `results/exp2/figures/` for executive presentations."
+        ]
+      },
+      {
+        "step": 9,
+        "title": "Document findings for executives",
+        "actions": [
+          "Summarize key metrics and observations per scenario in an executive-friendly template (e.g., `templates/exp2_executive_summary.md`).",
+          "Highlight where the diversified portfolio clearly outperforms the baseline and where benefits are marginal or negative.",
+          "Translate technical metrics into business impacts (e.g., estimated number of impacted customers, financial exposure reduction) where possible.",
+          "Capture open questions and decisions (e.g., where to invest in additional redundancy, where complexity outweighs benefits) as inputs to portfolio strategy discussions."
+        ]
+      }
+    ]
+  },
+  "evidence_schema": {
+    "description": "Structured format for capturing the evidence produced by each experiment run so that results can be compared, audited, and communicated consistently.",
+    "schema_version": "1.0",
+    "record_structure": {
+      "run_metadata": {
+        "run_id": "string_unique_identifier_for_this_run",
+        "timestamp_utc": "ISO_8601_timestamp_of_run_start",
+        "portfolio_id": "baseline_or_treatment_or_custom_label",
+        "scenario_id": "identifier_matching_configs/scenarios/*.yml",
+        "workload_ids": [
+          "array_of_workload_ids_e.g._['wl-credit-risk-batch','wl-fraud-streaming']"
+        ],
+        "random_seed": "integer_seed_used_for_this_run",
+        "environment_hash": "hash_or_identifier_of_environment_configuration_e.g._docker_image_digest_or_git_commit",
+        "config_commit_hash": "git_commit_hash_of_repo_at_run_time",
+        "operator": "optional_identifier_of_person_or_system_triggering_run"
+      },
+      "scenario_parameters": {
+        "shock_type": "e.g._regulatory_shift_market_distribution_shift_vendor_region_outage",
+        "shock_intensity": "numeric_or_categorical_indicator_e.g._0.2_for_20pct_shift",
+        "shock_start_time_offset_s": "seconds_from_run_start_to_shock_onset",
+        "shock_duration_s": "duration_of_shock_in_seconds",
+        "affected_components": [
+          "list_of_components_e.g._['cloud_provider_A_region_1','credit_bureau_feed_v1']"
+        ]
+      },
+      "portfolio_configuration_snapshot": {
+        "models": [
+          {
+            "model_id": "string",
+            "vendor": "string",
+            "architecture": "string",
+            "version": "string_or_semver",
+            "role": "primary_fallback_shadow_or_other_label",
+            "decision_domains": [
+              "list_of_domains_e.g._credit_risk_scoring"
+            ]
+          }
+        ],
+        "platform_dependencies": [
+          "list_of_platforms_regions_data_stores_relevant_to_this_run"
+        ]
+      },
+      "metrics": [
+        {
+          "workload_id": "string_matching_workloads_id",
+          "metric_name": "e.g._performance_degradation_pct",
+          "metric_value": "numeric_value",
+          "metric_unit": "string_e.g._percent",
+          "metric_version": "string_e.g._v1.0",
+          "aggregation_window": "description_e.g._entire_run_or_specific_time_window",
+          "time_window_start_utc": "ISO_8601_timestamp_or_null_if_not_applicable",
+          "time_window_end_utc": "ISO_8601_timestamp_or_null_if_not_applicable"
+        }
+      ],
+      "time_series_samples": [
+        {
+          "timestamp_utc": "ISO_8601_timestamp",
+          "workload_id": "string",
+          "scenario_phase": "pre_shock_during_shock_post_shock",
+          "request_count": "integer_requests_or_events_in_window",
+          "error_count": "integer",
+          "timeout_count": "integer",
+          "avg_latency_ms": "numeric",
+          "p95_latency_ms": "numeric",
+          "primary_model_call_rate": "fraction_of_requests",
+          "fallback_activation_rate": "fraction_of_requests",
+          "notes": "optional_string_for_anomalous_events"
+        }
+      ],
+      "derived_insights": {
+        "performance_comparison_vs_baseline": "optional_string_summary_if_this_is_treatment_run",
+        "estimated_business_impact": "optional_string_or_object_describing_monetary_or_operational_impact_estimates",
+        "executive_summary_points": [
+          "array_of_1_to_5_bullet_style_sentences_suitable_for_executive_readouts"
+        ]
+      }
+    }
+  }
+}
